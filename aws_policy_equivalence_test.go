@@ -8,55 +8,6 @@ import (
 	"testing"
 )
 
-func TestParseAwsArnString(t *testing.T) {
-	cases := []struct {
-		input string
-		arn   awsArn
-		err   bool
-	}{
-		{
-			input: "invalid:prefix",
-			err:   true,
-		},
-		{
-			input: "arn:missing:sections",
-			err:   true,
-		},
-		{
-			input: "arn:aws:ec2:us-west-2:123456789012:instance/i-01234567",
-			arn: awsArn{
-				partition: "aws",
-				service:   "ec2",
-				region:    "us-west-2",
-				account:   "123456789012",
-				resource:  "instance/i-01234567",
-			},
-		},
-		{
-			input: "arn:aws:iam::123456789012:root",
-			arn: awsArn{
-				partition: "aws",
-				service:   "iam",
-				region:    "",
-				account:   "123456789012",
-				resource:  "root",
-			},
-		},
-	}
-	for _, tc := range cases {
-		arn, err := parseAwsArnString(tc.input)
-		if !tc.err && err != nil {
-			t.Fatalf("Unexpected error: %s", err)
-		}
-		if tc.err && err == nil {
-			t.Fatal("Expected error, none produced")
-		}
-		if tc.arn != arn {
-			t.Errorf("Expected %q to parse as %v, but got %v", tc.input, tc.arn, arn)
-		}
-	}
-}
-
 func TestPolicyEquivalence(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -74,7 +25,7 @@ func TestPolicyEquivalence(t *testing.T) {
 		},
 
 		{
-			name:       "Idential policy text",
+			name:       "Identical policy text",
 			policy1:    policyTest1,
 			policy2:    policyTest1,
 			equivalent: true,
@@ -290,12 +241,24 @@ func TestPolicyEquivalence(t *testing.T) {
 			name:       "Incorrect single Resource type",
 			policy1:    policyTest32,
 			policy2:    policyTest32,
-			equivalent: false,
+			equivalent: true,
 		},
 		{
 			name:       "Incorrect multiple Resource type",
 			policy1:    policyTest33,
 			policy2:    policyTest33,
+			equivalent: true,
+		},
+		{
+			name:       "Principal order not important",
+			policy1:    policyTest34a,
+			policy2:    policyTest34b,
+			equivalent: true,
+		},
+		{
+			name:       "Differences matter",
+			policy1:    policyTest34b,
+			policy2:    policyTest34c,
 			equivalent: false,
 		},
 	}
@@ -1310,3 +1273,123 @@ const policyTest33 = `{
     }
   ]
 }`
+
+const policyTest34a = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Action": "*",
+      "Resource": "*",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::123456789012:role/franz-ferdinand",
+          "arn:aws:iam::123456789012:role/morgan-page",
+          "arn:aws:iam::123456789012:role/built-by-titan",
+          "arn:aws:iam::123456789012:role/kristina_sky",
+          "arn:aws:iam::123456789012:role/maria_becerra",
+          "arn:aws:iam::123456789012:role/jodie_knight"
+        ]
+      }
+    }
+  ]
+}`
+
+const policyTest34b = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Action": "*",
+      "Resource": "*",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::123456789012:role/maria_becerra",
+          "arn:aws:iam::123456789012:role/morgan-page",
+          "arn:aws:iam::123456789012:role/kristina_sky",
+          "arn:aws:iam::123456789012:role/jodie_knight",
+          "arn:aws:iam::123456789012:role/franz-ferdinand",
+          "arn:aws:iam::123456789012:role/built-by-titan"
+        ]
+      }
+    }
+  ]
+}`
+
+const policyTest34c = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Action": "*",
+      "Resource": "*",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::123456789012:role/maria_becerra",
+          "arn:aws:iam::123456789012:role/morgan-page",
+          "arn:aws:iam::123456789012:role/kristina_sky",
+          "arn:aws:iam::123456789012:role/jodie_knight",
+          "arn:aws:iam::123456789012:role/franz-ferdinand",
+          "arn:aws:iam::123456789012:role/idina-menzel"
+        ]
+      }
+    }
+  ]
+}`
+
+func TestStringValueSlicesEqualIgnoreOrder(t *testing.T) {
+	equal := []interface{}{
+		[]interface{}{
+			[]string{"a", "b", "c"},
+			[]string{"a", "b", "c"},
+		},
+		[]interface{}{
+			[]string{"b", "a", "c"},
+			[]string{"a", "b", "c"},
+		},
+		[]interface{}{
+			[]string{"apple", "carrot", "tomato"},
+			[]string{"tomato", "apple", "carrot"},
+		},
+		[]interface{}{
+			[]string{"Application", "Barrier", "Chilly", "Donut"},
+			[]string{"Barrier", "Application", "Donut", "Chilly"},
+		},
+	}
+	for _, v := range equal {
+		if !stringSlicesEqualIgnoreOrder(v.([]interface{})[0].([]string), v.([]interface{})[1].([]string)) {
+			t.Fatalf("%v should be equal: %v", v.([]interface{})[0].([]string), v.([]interface{})[1].([]string))
+		}
+	}
+
+	notEqual := []interface{}{
+		[]interface{}{
+			[]string{"c", "b", "c"},
+			[]string{"a", "b", "c"},
+		},
+		[]interface{}{
+			[]string{"b", "a", "c"},
+			[]string{"a", "bread", "c"},
+		},
+		[]interface{}{
+			[]string{"apple", "carrot", "tomato"},
+			[]string{"tomato", "apple"},
+		},
+		[]interface{}{
+			[]string{"Application", "Barrier", "Chilly", "Donut"},
+			[]string{"Barrier", "Applications", "Donut", "Chilly"},
+		},
+		[]interface{}{
+			[]string{},
+			[]string{"Barrier", "Applications", "Donut", "Chilly"},
+		},
+	}
+	for _, v := range notEqual {
+		if stringSlicesEqualIgnoreOrder(v.([]interface{})[0].([]string), v.([]interface{})[1].([]string)) {
+			t.Fatalf("%v should not be equal: %v", v.([]interface{})[0].([]string), v.([]interface{})[1].([]string))
+		}
+	}
+}
