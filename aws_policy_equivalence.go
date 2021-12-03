@@ -12,8 +12,10 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -28,12 +30,12 @@ import (
 // otherwise. If either of the input strings are not valid JSON,
 // false is returned along with an error.
 func PoliciesAreEquivalent(policy1, policy2 string) (bool, error) {
-	policy1intermediate := &intermediateAwsPolicyDocument{}
+	policy1intermediate := &intermediatePolicyDocument{}
 	if err := json.Unmarshal([]byte(policy1), policy1intermediate); err != nil {
 		return false, fmt.Errorf("Error unmarshaling policy: %s", err)
 	}
 
-	policy2intermediate := &intermediateAwsPolicyDocument{}
+	policy2intermediate := &intermediatePolicyDocument{}
 	if err := json.Unmarshal([]byte(policy2), policy2intermediate); err != nil {
 		return false, fmt.Errorf("Error unmarshaling policy: %s", err)
 	}
@@ -50,14 +52,14 @@ func PoliciesAreEquivalent(policy1, policy2 string) (bool, error) {
 	return policy1Doc.equals(policy2Doc), nil
 }
 
-type intermediateAwsPolicyDocument struct {
+type intermediatePolicyDocument struct {
 	Version    string      `json:",omitempty"`
 	Id         string      `json:",omitempty"`
 	Statements interface{} `json:"Statement"`
 }
 
-func (intermediate *intermediateAwsPolicyDocument) document() (*awsPolicyDocument, error) {
-	var statements []*awsPolicyStatement
+func (intermediate *intermediatePolicyDocument) document() (*policyDocument, error) {
+	var statements []*policyStatement
 
 	switch s := intermediate.Statements.(type) {
 	case []interface{}:
@@ -65,7 +67,7 @@ func (intermediate *intermediateAwsPolicyDocument) document() (*awsPolicyDocumen
 			return nil, fmt.Errorf("Error parsing statement: %s", err)
 		}
 	case map[string]interface{}:
-		var singleStatement *awsPolicyStatement
+		var singleStatement *policyStatement
 		if err := mapstructure.Decode(s, &singleStatement); err != nil {
 			return nil, fmt.Errorf("Error parsing statement: %s", err)
 		}
@@ -74,7 +76,7 @@ func (intermediate *intermediateAwsPolicyDocument) document() (*awsPolicyDocumen
 		return nil, errors.New("Unknown error parsing statement")
 	}
 
-	document := &awsPolicyDocument{
+	document := &policyDocument{
 		Version:    intermediate.Version,
 		Id:         intermediate.Id,
 		Statements: statements,
@@ -83,13 +85,13 @@ func (intermediate *intermediateAwsPolicyDocument) document() (*awsPolicyDocumen
 	return document, nil
 }
 
-type awsPolicyDocument struct {
+type policyDocument struct {
 	Version    string
 	Id         string
-	Statements []*awsPolicyStatement
+	Statements []*policyStatement
 }
 
-func (doc *awsPolicyDocument) equals(other *awsPolicyDocument) bool {
+func (doc *policyDocument) equals(other *policyDocument) bool {
 	// Check the basic fields of the document
 	if doc.Version != other.Version {
 		return false
@@ -139,7 +141,7 @@ func (doc *awsPolicyDocument) equals(other *awsPolicyDocument) bool {
 	return true
 }
 
-type awsPolicyStatement struct {
+type policyStatement struct {
 	Sid           string                            `json:",omitempty" mapstructure:"Sid"`
 	Effect        string                            `json:",omitempty" mapstructure:"Effect"`
 	Actions       interface{}                       `json:"Action,omitempty" mapstructure:"Action"`
@@ -151,41 +153,47 @@ type awsPolicyStatement struct {
 	Conditions    map[string]map[string]interface{} `json:"Condition,omitempty" mapstructure:"Condition"`
 }
 
-func (statement *awsPolicyStatement) equals(other *awsPolicyStatement) bool {
+func (statement *policyStatement) equals(other *policyStatement) bool {
 	if statement.Sid != other.Sid {
 		return false
 	}
 
-	if strings.ToLower(statement.Effect) != strings.ToLower(other.Effect) {
+	if !strings.EqualFold(statement.Effect, other.Effect) {
 		return false
 	}
 
-	ourActions := newAWSStringSet(statement.Actions)
-	theirActions := newAWSStringSet(other.Actions)
-	if !ourActions.equals(theirActions) {
+	ourActions := newStringSet(statement.Actions)
+	theirActions := newStringSet(other.Actions)
+	if !stringSlicesEqualIgnoreOrder(ourActions, theirActions) {
 		return false
 	}
 
-	ourNotActions := newAWSStringSet(statement.NotActions)
-	theirNotActions := newAWSStringSet(other.NotActions)
-	if !ourNotActions.equals(theirNotActions) {
+	ourNotActions := newStringSet(statement.NotActions)
+	theirNotActions := newStringSet(other.NotActions)
+	if !stringSlicesEqualIgnoreOrder(ourNotActions, theirNotActions) {
 		return false
 	}
 
-	ourResources := newAWSStringSet(statement.Resources)
-	theirResources := newAWSStringSet(other.Resources)
-	if !ourResources.equals(theirResources) {
+	ourResources := newStringSet(statement.Resources)
+	theirResources := newStringSet(other.Resources)
+	//if !stringSlicesEqualIgnoreOrder(ourResources, theirResources) {
+	if !stringSlicesEqualIgnoreOrder(ourResources, theirResources) {
+		//	fmt.Printf("%v\n%v\n", ourResources, theirResources)
+		return false
+	}
+	//if !ourResources.equals(theirResources) {
+	//	return false
+	//}
+
+	ourNotResources := newStringSet(statement.NotResources)
+	theirNotResources := newStringSet(other.NotResources)
+	if !stringSlicesEqualIgnoreOrder(ourNotResources, theirNotResources) {
+		//if !ourNotResources.equals(theirNotResources) {
 		return false
 	}
 
-	ourNotResources := newAWSStringSet(statement.NotResources)
-	theirNotResources := newAWSStringSet(other.NotResources)
-	if !ourNotResources.equals(theirNotResources) {
-		return false
-	}
-
-	ourConditionsBlock := awsConditionsBlock(statement.Conditions)
-	theirConditionsBlock := awsConditionsBlock(other.Conditions)
+	ourConditionsBlock := conditionsBlock(statement.Conditions)
+	theirConditionsBlock := conditionsBlock(other.Conditions)
 	if !ourConditionsBlock.Equals(theirConditionsBlock) {
 		return false
 	}
@@ -213,22 +221,22 @@ func mapPrincipalsEqual(ours, theirs interface{}) bool {
 	ourPrincipalMap, oursOk := ours.(map[string]interface{})
 	theirPrincipalMap, theirsOk := theirs.(map[string]interface{})
 
-	oursNormalized := make(map[string]awsPrincipalStringSet)
+	oursNormalized := make(map[string]principalStringSet)
 	if oursOk {
 		for key, val := range ourPrincipalMap {
-			var tmp = newAWSPrincipalStringSet(val)
+			var tmp = newPrincipalStringSet(val)
 			if len(tmp) > 0 {
 				oursNormalized[key] = tmp
 			}
 		}
 	}
 
-	theirsNormalized := make(map[string]awsPrincipalStringSet)
+	theirsNormalized := make(map[string]principalStringSet)
 	if theirsOk {
 		for key, val := range theirPrincipalMap {
-			var tmp = newAWSPrincipalStringSet(val)
+			var tmp = newPrincipalStringSet(val)
 			if len(tmp) > 0 {
-				theirsNormalized[key] = newAWSPrincipalStringSet(val)
+				theirsNormalized[key] = newPrincipalStringSet(val)
 			}
 		}
 	}
@@ -272,19 +280,19 @@ func stringPrincipalsEqual(ours, theirs interface{}) bool {
 
 	// Handle AWS converting account ID principal to root IAM user ARN
 	// ACCOUNTID == arn:PARTITION:iam::ACCOUNTID:root
-	awsAccountIDRegex := regexp.MustCompile(`^[0-9]{12}$`)
+	accountIDRegex := regexp.MustCompile(`^[0-9]{12}$`)
 
-	if awsAccountIDRegex.MatchString(ourPrincipal) {
-		if theirArn, err := parseAwsArnString(theirPrincipal); err == nil {
-			if theirArn.service == "iam" && theirArn.resource == "root" && theirArn.account == ourPrincipal {
+	if accountIDRegex.MatchString(ourPrincipal) {
+		if theirArn, err := arn.Parse(theirPrincipal); err == nil {
+			if theirArn.Service == "iam" && theirArn.Resource == "root" && theirArn.AccountID == ourPrincipal {
 				return true
 			}
 		}
 	}
 
-	if awsAccountIDRegex.MatchString(theirPrincipal) {
-		if ourArn, err := parseAwsArnString(ourPrincipal); err == nil {
-			if ourArn.service == "iam" && ourArn.resource == "root" && ourArn.account == theirPrincipal {
+	if accountIDRegex.MatchString(theirPrincipal) {
+		if ourArn, err := arn.Parse(ourPrincipal); err == nil {
+			if ourArn.Service == "iam" && ourArn.Resource == "root" && ourArn.AccountID == theirPrincipal {
 				return true
 			}
 		}
@@ -293,9 +301,9 @@ func stringPrincipalsEqual(ours, theirs interface{}) bool {
 	return false
 }
 
-type awsConditionsBlock map[string]map[string]interface{}
+type conditionsBlock map[string]map[string]interface{}
 
-func (conditions awsConditionsBlock) Equals(other awsConditionsBlock) bool {
+func (conditions conditionsBlock) Equals(other conditionsBlock) bool {
 	if conditions == nil && other != nil || other == nil && conditions != nil {
 		return false
 	}
@@ -304,20 +312,20 @@ func (conditions awsConditionsBlock) Equals(other awsConditionsBlock) bool {
 		return false
 	}
 
-	oursNormalized := make(map[string]map[string]awsStringSet)
+	oursNormalized := make(map[string]map[string]stringSet)
 	for key, condition := range conditions {
-		normalizedCondition := make(map[string]awsStringSet)
+		normalizedCondition := make(map[string]stringSet)
 		for innerKey, val := range condition {
-			normalizedCondition[innerKey] = newAWSStringSet(val)
+			normalizedCondition[innerKey] = newStringSet(val)
 		}
 		oursNormalized[key] = normalizedCondition
 	}
 
-	theirsNormalized := make(map[string]map[string]awsStringSet)
+	theirsNormalized := make(map[string]map[string]stringSet)
 	for key, condition := range other {
-		normalizedCondition := make(map[string]awsStringSet)
+		normalizedCondition := make(map[string]stringSet)
 		for innerKey, val := range condition {
-			normalizedCondition[innerKey] = newAWSStringSet(val)
+			normalizedCondition[innerKey] = newStringSet(val)
 		}
 		theirsNormalized[key] = normalizedCondition
 	}
@@ -361,25 +369,25 @@ func (conditions awsConditionsBlock) Equals(other awsConditionsBlock) bool {
 	return true
 }
 
-type awsStringSet []string
-type awsPrincipalStringSet awsStringSet
+type stringSet []string
+type principalStringSet stringSet
 
-// newAWSStringSet constructs an awsStringSet from an interface{} - which
+// newStringSet constructs an stringSet from an interface{} - which
 // may be nil, a single string, or []interface{} (each of which is a string).
 // This corresponds with how structures come off the JSON unmarshaler
 // without any custom encoding rules.
-func newAWSStringSet(members interface{}) awsStringSet {
+func newStringSet(members interface{}) stringSet {
 	if members == nil {
-		return awsStringSet{}
+		return stringSet{}
 	}
 
 	if single, ok := members.(string); ok {
-		return awsStringSet{single}
+		return stringSet{single}
 	}
 
 	if multiple, ok := members.([]interface{}); ok {
 		if len(multiple) == 0 {
-			return awsStringSet{}
+			return stringSet{}
 		}
 		actions := make([]string, len(multiple))
 		for i, action := range multiple {
@@ -389,40 +397,40 @@ func newAWSStringSet(members interface{}) awsStringSet {
 
 			actions[i] = action.(string)
 		}
-		return awsStringSet(actions)
+		return stringSet(actions)
 	}
 
 	return nil
 }
 
-func newAWSPrincipalStringSet(members interface{}) awsPrincipalStringSet {
-	return awsPrincipalStringSet(newAWSStringSet(members))
+func newPrincipalStringSet(members interface{}) principalStringSet {
+	return principalStringSet(newStringSet(members))
 }
 
-func (actions awsStringSet) equals(other awsStringSet) bool {
-	if actions == nil || other == nil {
+func (ours stringSet) equals(theirs stringSet) bool {
+	if ours == nil || theirs == nil {
 		return false
 	}
 
-	if len(actions) != len(other) {
+	if len(ours) != len(theirs) {
 		return false
 	}
 
 	ourMap := map[string]struct{}{}
 	theirMap := map[string]struct{}{}
 
-	for _, action := range actions {
-		ourMap[action] = struct{}{}
+	for _, str := range ours {
+		ourMap[str] = struct{}{}
 	}
 
-	for _, action := range other {
-		theirMap[action] = struct{}{}
+	for _, str := range theirs {
+		theirMap[str] = struct{}{}
 	}
 
 	return reflect.DeepEqual(ourMap, theirMap)
 }
 
-func (ours awsPrincipalStringSet) equals(theirs awsPrincipalStringSet) bool {
+func (ours principalStringSet) equals(theirs principalStringSet) bool {
 	if len(ours) != len(theirs) {
 		return false
 	}
@@ -443,31 +451,13 @@ func (ours awsPrincipalStringSet) equals(theirs awsPrincipalStringSet) bool {
 	return true
 }
 
-// awsArn describes an Amazon Resource Name
-// More information: http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
-type awsArn struct {
-	account   string
-	partition string
-	region    string
-	resource  string
-	service   string
-}
+func stringSlicesEqualIgnoreOrder(s1, s2 []string) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
 
-// parseAwsArnString converts a string into an awsArn
-// Expects string in form of: arn:PARTITION:SERVICE:REGION:ACCOUNT:RESOURCE
-func parseAwsArnString(arn string) (awsArn, error) {
-	if !strings.HasPrefix(arn, "arn:") {
-		return awsArn{}, fmt.Errorf("expected arn: prefix, received: %s", arn)
-	}
-	arnParts := strings.SplitN(arn, ":", 6)
-	if len(arnParts) != 6 {
-		return awsArn{}, fmt.Errorf("expected 6 colon delimited sections, received: %s", arn)
-	}
-	return awsArn{
-		account:   arnParts[4],
-		partition: arnParts[1],
-		region:    arnParts[3],
-		resource:  arnParts[5],
-		service:   arnParts[2],
-	}, nil
+	sort.Strings(s1)
+	sort.Strings(s2)
+
+	return reflect.DeepEqual(s1, s2)
 }
