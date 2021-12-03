@@ -1,10 +1,17 @@
-name: Go
+name: GoCI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - 'release/**'
   pull_request:
-    branches: [ main ]
+    paths:
+      - .go-version
+      - .golangci.yml
+      - '**/*.go'
+      - go.sum
+      - main.go
 
 jobs:
 
@@ -23,3 +30,18 @@ jobs:
 
     - name: Test
       run: go test -v ./...
+
+  golangci-lint:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: echo "GO_VERSION=$(cat .go-version)" >> $GITHUB_ENV
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    - name: go env
+      run: |
+        echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_ENV
+    - run: cd tools && go install github.com/golangci/golangci-lint/cmd/golangci-lint
+    - run: golangci-lint run ./...

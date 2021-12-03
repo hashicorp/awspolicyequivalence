@@ -1,12 +1,8 @@
-module github.com/jen20/awspolicyequivalence
+module github.com/hashicorp/awspolicyequivalence/tools
 
 go 1.17
 
-require (
-	github.com/aws/aws-sdk-go v1.42.18
-	github.com/golangci/golangci-lint v1.43.0
-	github.com/mitchellh/mapstructure v1.4.2
-)
+require github.com/golangci/golangci-lint v1.43.0
 
 require (
 	4d63.com/gochecknoglobals v0.1.0 // indirect
@@ -90,6 +86,7 @@ require (
 	github.com/mgechev/dots v0.0.0-20210922191527-e955255bf517 // indirect
 	github.com/mgechev/revive v1.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/mitchellh/mapstructure v1.4.2 // indirect
 	github.com/moricho/tparallel v0.2.1 // indirect
 	github.com/nakabonne/nestif v0.3.1 // indirect
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354 // indirect
