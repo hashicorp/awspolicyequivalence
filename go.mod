@@ -1,4 +1,4 @@
-module github.com/jen20/awspolicyequivalence
+module github.com/hashicorp/awspolicyequivalence
 
 go 1.17
 
