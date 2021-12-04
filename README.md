@@ -4,4 +4,4 @@ This library checks for structural equivalence of two AWS policy documents. See 
 
 ### CI
 
-<img src="https://travis-ci.org/jen20/awspolicyequivalence.svg?branch=master" alt="Travis CI Build Status" />
+![Go Build/Test](https://github.com/hashicorp/awspolicyequivalence/actions/workflows/go.yml/badge.svg)
