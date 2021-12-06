@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -381,26 +382,31 @@ func newStringSet(members interface{}) stringSet {
 		return stringSet{}
 	}
 
-	if single, ok := members.(string); ok {
-		return stringSet{single}
-	}
-
-	if multiple, ok := members.([]interface{}); ok {
-		if len(multiple) == 0 {
-			return stringSet{}
-		}
-		actions := make([]string, len(multiple))
-		for i, action := range multiple {
-			if _, ok := action.(string); !ok {
+	switch v := members.(type) {
+	case string:
+		return stringSet{v}
+	case bool:
+		return stringSet{strconv.FormatBool(v)}
+	case float64:
+		return stringSet{strconv.FormatFloat(v, 'f', -1, 64)}
+	case []interface{}:
+		var actions []string
+		for _, action := range v {
+			switch action := action.(type) {
+			case string:
+				actions = append(actions, action)
+			case bool:
+				actions = append(actions, strconv.FormatBool(action))
+			case float64:
+				actions = append(actions, strconv.FormatFloat(action, 'f', -1, 64))
+			default:
 				return nil
 			}
-
-			actions[i] = action.(string)
 		}
 		return stringSet(actions)
+	default:
+		return nil
 	}
-
-	return nil
 }
 
 func newPrincipalStringSet(members interface{}) principalStringSet {
