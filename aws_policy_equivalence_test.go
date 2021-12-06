@@ -261,6 +261,24 @@ func TestPolicyEquivalence(t *testing.T) {
 			policy2:    policyTest34c,
 			equivalent: false,
 		},
+		{
+			name:       "Boolean condition with and without quotes on single value",
+			policy1:    policyTest35a,
+			policy2:    policyTest35b,
+			equivalent: true,
+		},
+		{
+			name:       "Numeric condition with and without quotes on single value",
+			policy1:    policyTest36a,
+			policy2:    policyTest36b,
+			equivalent: true,
+		},
+		{
+			name:       "Numeric condition with and without quotes on array of values",
+			policy1:    policyTest37a,
+			policy2:    policyTest37b,
+			equivalent: true,
+		},
 	}
 
 	for _, tc := range cases {
@@ -1255,7 +1273,7 @@ const policyTest32 = `{
       "Action": [
         "s3:PutObject"
       ],
-      "Resource": 42
+      "Resource": {}
     }
   ]
 }`
@@ -1269,7 +1287,7 @@ const policyTest33 = `{
       "Action": [
         "s3:PutObject"
       ],
-      "Resource": [42]
+      "Resource": [[42]]
     }
   ]
 }`
@@ -1339,6 +1357,132 @@ const policyTest34c = `{
     }
   ]
 }`
+
+const policyTest35a = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "statement1",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::examplebucket/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:MultiFactorAuthPresent": true
+        }
+      }
+    }
+  ]
+ }`
+
+const policyTest35b = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "statement1",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::examplebucket/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:MultiFactorAuthPresent": "true"
+        }
+      }
+    }
+  ]
+ }`
+
+const policyTest36a = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "statement1",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::examplebucket/*"
+      ],
+      "Condition": {
+        "NumericLessThanEquals": {
+          "aws:MultiFactorAuthAge": 100
+        }
+      }
+    }
+  ]
+ }`
+
+const policyTest36b = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "statement1",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::examplebucket/*"
+      ],
+      "Condition": {
+        "NumericLessThanEquals": {
+          "aws:MultiFactorAuthAge": "100"
+        }
+      }
+    }
+  ]
+ }`
+
+const policyTest37a = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "statement1",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::examplebucket/*"
+      ],
+      "Condition": {
+        "NumericEquals": {
+          "aws:MultiFactorAuthAge": [100.01, 200.2]
+        }
+      }
+    }
+  ]
+ }`
+
+const policyTest37b = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "statement1",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::examplebucket/*"
+      ],
+      "Condition": {
+        "NumericEquals": {
+          "aws:MultiFactorAuthAge": ["100.01", "200.2"]
+        }
+      }
+    }
+  ]
+ }`
 
 func TestStringValueSlicesEqualIgnoreOrder(t *testing.T) {
 	equal := []interface{}{
