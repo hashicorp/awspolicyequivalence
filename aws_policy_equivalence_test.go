@@ -279,6 +279,12 @@ func TestPolicyEquivalence(t *testing.T) {
 			policy2:    policyTest37b,
 			equivalent: true,
 		},
+		{
+			name:       "Condition containing empty array",
+			policy1:    policyTest38a,
+			policy2:    policyTest38b,
+			equivalent: true,
+		},
 	}
 
 	for _, tc := range cases {
@@ -1483,6 +1489,44 @@ const policyTest37b = `{
     }
   ]
  }`
+
+const policyTest38a = `{
+  "Id":"sqspolicy",
+  "Statement":[
+     {
+        "Action":"sqs:SendMessage",
+        "Condition":{
+           "ArnEquals":{
+              "aws:SourceArn":[]
+           }
+        },
+        "Effect":"Allow",
+        "Principal":"*",
+        "Resource":"arn:aws:sqs:***:redacted:redacted",
+        "Sid":"AllowSNSSubscriptions"
+     }
+  ],
+  "Version":"2012-10-17"
+}`
+
+const policyTest38b = `{
+  "Version":"2012-10-17",
+  "Id":"sqspolicy",
+  "Statement":[
+     {
+        "Sid":"AllowSNSSubscriptions",
+        "Effect":"Allow",
+        "Principal":"*",
+        "Action":"sqs:SendMessage",
+        "Resource":"arn:aws:sqs:***:redacted:redacted",
+        "Condition":{
+           "ArnEquals":{
+              "aws:SourceArn":[]
+           }
+        }
+     }
+  ]
+}`
 
 func TestStringValueSlicesEqualIgnoreOrder(t *testing.T) {
 	equal := []interface{}{
