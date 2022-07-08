@@ -37,17 +37,19 @@ func PoliciesAreEquivalent(policy1, policy2 string) (bool, error) {
 	policy1 = strings.TrimSpace(policy1)
 	if strings.HasPrefix(policy1, "[") && strings.HasSuffix(policy1, "]") {
 		policy1 = strings.TrimPrefix(strings.TrimSuffix(policy1, "]"), "[")
-		if strings.TrimSpace(policy1) == "" {
-			policy1 = "{}"
-		}
+		policy1 = strings.TrimSpace(policy1)
+	}
+	if policy1 == "" {
+		policy1 = "{}"
 	}
 
 	policy2 = strings.TrimSpace(policy2)
 	if strings.HasPrefix(policy2, "[") && strings.HasSuffix(policy2, "]") {
 		policy2 = strings.TrimPrefix(strings.TrimSuffix(policy2, "]"), "[")
-		if strings.TrimSpace(policy2) == "" {
-			policy2 = "{}"
-		}
+		policy2 = strings.TrimSpace(policy2)
+	}
+	if policy2 == "" {
+		policy2 = "{}"
 	}
 
 	policy1intermediate := &intermediatePolicyDocument{}

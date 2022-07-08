@@ -315,6 +315,12 @@ func TestPolicyEquivalence(t *testing.T) {
 			policy2:    policyTest43b,
 			equivalent: false,
 		},
+		{
+			name:       "Equivalence of emptiness",
+			policy1:    policyTest44a,
+			policy2:    policyTest44b,
+			equivalent: true,
+		},
 	}
 
 	for _, tc := range cases {
@@ -1598,6 +1604,9 @@ const policyTest42b = `{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow"
 
 const policyTest43a = `{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"}}],"Version":"2012-10-17"}`
 const policyTest43b = `{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow","Principal":{"Service":["rds.amazonaws.com"]}}],"Version":"2012-10-17"}`
+
+const policyTest44a = ``
+const policyTest44b = `{}`
 
 func TestStringValueSlicesEqualIgnoreOrder(t *testing.T) {
 	equal := []interface{}{
