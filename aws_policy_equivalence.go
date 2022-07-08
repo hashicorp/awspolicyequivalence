@@ -87,19 +87,24 @@ type intermediatePolicyDocument struct {
 func (intermediate *intermediatePolicyDocument) document() (*policyDocument, error) {
 	var statements []*policyStatement
 
-	switch s := intermediate.Statements.(type) {
-	case []interface{}:
-		if err := mapstructure.Decode(s, &statements); err != nil {
-			return nil, fmt.Errorf("parsing statement 1: %s", err)
+	// Decode only non-nil statements to prevent irreversible result when setting values
+	// in Terraform state.
+	// Reference: https://github.com/hashicorp/terraform-provider-aws/issues/22944
+	if intermediate.Statements != nil {
+		switch s := intermediate.Statements.(type) {
+		case []interface{}:
+			if err := mapstructure.Decode(s, &statements); err != nil {
+				return nil, fmt.Errorf("parsing statement 1: %s", err)
+			}
+		case map[string]interface{}:
+			var singleStatement *policyStatement
+			if err := mapstructure.Decode(s, &singleStatement); err != nil {
+				return nil, fmt.Errorf("parsing statement 2: %s", err)
+			}
+			statements = append(statements, singleStatement)
+		default:
+			return nil, errors.New("unknown statement parsing problem")
 		}
-	case map[string]interface{}:
-		var singleStatement *policyStatement
-		if err := mapstructure.Decode(s, &singleStatement); err != nil {
-			return nil, fmt.Errorf("parsing statement 2: %s", err)
-		}
-		statements = append(statements, singleStatement)
-	default:
-		return nil, errors.New("Unknown error parsing statement")
 	}
 
 	document := &policyDocument{
@@ -118,6 +123,10 @@ type policyDocument struct {
 }
 
 func (doc *policyDocument) equals(other *policyDocument) bool {
+	// Prevent panic
+	if doc == nil {
+		return other == nil
+	}
 	// Check the basic fields of the document
 	if doc.Version != other.Version {
 		return false

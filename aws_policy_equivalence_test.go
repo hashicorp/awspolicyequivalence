@@ -5,6 +5,7 @@ package awspolicy
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -228,7 +229,6 @@ func TestPolicyEquivalence(t *testing.T) {
 			policy1:    policyTest30,
 			policy2:    policyTest30,
 			equivalent: true,
-			err:        false,
 		},
 		{
 			name:       "Incorrect Statement type",
@@ -324,17 +324,19 @@ func TestPolicyEquivalence(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		equal, err := PoliciesAreEquivalent(tc.policy1, tc.policy2)
-		if !tc.err && err != nil {
-			t.Fatalf("Unexpected error: %s", err)
-		}
-		if tc.err && err == nil {
-			t.Fatal("Expected error, none produced")
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			equal, err := PoliciesAreEquivalent(tc.policy1, tc.policy2)
+			if !tc.err && err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+			if tc.err && err == nil {
+				t.Fatal("Expected error, none produced")
+			}
 
-		if equal != tc.equivalent {
-			t.Fatalf("Bad: %s\n  Expected: %t\n       Got: %t\n", tc.name, tc.equivalent, equal)
-		}
+			if equal != tc.equivalent {
+				t.Fatalf("Bad: %s\n  Expected: %t\n       Got: %t\n", tc.name, tc.equivalent, equal)
+			}
+		})
 	}
 }
 
@@ -1659,5 +1661,74 @@ func TestStringValueSlicesEqualIgnoreOrder(t *testing.T) {
 		if stringSlicesEqualIgnoreOrder(v.([]interface{})[0].([]string), v.([]interface{})[1].([]string)) {
 			t.Fatalf("%v should not be equal: %v", v.([]interface{})[0].([]string), v.([]interface{})[1].([]string))
 		}
+	}
+}
+
+func TestIntermediatePolicyDocument(t *testing.T) {
+	cases := []struct {
+		name                   string
+		inputPolicy            string
+		expectedPolicyDocument *policyDocument
+		err                    bool
+	}{
+		{
+			name: "invalid policy with null string statement",
+			inputPolicy: `{
+				"Version": "2012-10-17",
+				"Statement": "null"
+			}`,
+			err: true,
+		},
+		{
+			name: "policy with version and nil statement",
+			inputPolicy: `{
+				"Version": "2012-10-17",
+				"Statement": null
+			}`,
+			expectedPolicyDocument: &policyDocument{
+				Version:    "2012-10-17",
+				Statements: nil,
+			},
+		},
+		{
+			name:        "basic policy",
+			inputPolicy: policyTest1,
+			expectedPolicyDocument: &policyDocument{
+				Version: "2012-10-17",
+				Statements: []*policyStatement{
+					{
+						Sid:    "",
+						Effect: "Allow",
+						Principals: map[string]interface{}{
+							"Service": "spotfleet.amazonaws.com",
+						},
+						Actions: "sts:AssumeRole",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			policy1intermediate := &intermediatePolicyDocument{}
+			err := json.Unmarshal([]byte(tc.inputPolicy), policy1intermediate)
+			if err != nil {
+				t.Fatalf("Error unmarshaling policy: %s", err)
+			}
+
+			actual, err := policy1intermediate.document()
+
+			if !tc.err && err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+			if tc.err && err == nil {
+				t.Fatal("Expected error, none produced")
+			}
+
+			if !actual.equals(tc.expectedPolicyDocument) {
+				t.Fatalf("Bad: %s\n  Expected: %v\n       Got: %v\n", tc.name, tc.expectedPolicyDocument, actual)
+			}
+		})
 	}
 }
