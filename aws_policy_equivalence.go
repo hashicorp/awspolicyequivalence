@@ -31,7 +31,7 @@ import (
 // otherwise. If either of the input strings are not valid JSON,
 // false is returned along with an error.
 func PoliciesAreEquivalent(policy1, policy2 string) (bool, error) {
-	// Although "policy" generally equates to JSON, AWS also has psuedo-JSON
+	// Although "policy" generally equates to JSON, AWS also has pseudo-JSON
 	// policies, such as assume-role policies that can be lists of JSONs. This
 	// only handles a one-length list of JSON:
 	policy1 = strings.TrimSpace(policy1)
