@@ -227,15 +227,15 @@ func TestPolicyEquivalence(t *testing.T) {
 			name:       "Missing Statement",
 			policy1:    policyTest30,
 			policy2:    policyTest30,
-			equivalent: false,
-			err:        true,
+			equivalent: true,
+			err:        false,
 		},
 		{
 			name:       "Incorrect Statement type",
 			policy1:    policyTest31,
 			policy2:    policyTest31,
-			equivalent: false,
-			err:        true,
+			equivalent: true,
+			err:        false,
 		},
 		{
 			name:       "Incorrect single Resource type",
@@ -283,6 +283,18 @@ func TestPolicyEquivalence(t *testing.T) {
 			name:       "Condition containing empty array",
 			policy1:    policyTest38a,
 			policy2:    policyTest38b,
+			equivalent: true,
+		},
+		{
+			name:       "Different empty lists",
+			policy1:    policyTest39a,
+			policy2:    policyTest39b,
+			equivalent: true,
+		},
+		{
+			name:       "One-length lists",
+			policy1:    policyTest40a,
+			policy2:    policyTest40b,
 			equivalent: true,
 		},
 	}
@@ -1525,6 +1537,38 @@ const policyTest38b = `{
            }
         }
      }
+  ]
+}`
+
+const policyTest39a = `[]`
+
+const policyTest39b = `[{
+
+}]`
+
+const policyTest40a = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "statement1",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": [42, 86]
+    }
+  ]
+}`
+
+const policyTest40b = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "statement1",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": [86, 42]
+    }
   ]
 }`
 
