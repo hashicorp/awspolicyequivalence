@@ -297,6 +297,24 @@ func TestPolicyEquivalence(t *testing.T) {
 			policy2:    policyTest40b,
 			equivalent: true,
 		},
+		{
+			name:       "Equivalent assume-role policies 1",
+			policy1:    policyTest41a,
+			policy2:    policyTest41b,
+			equivalent: true,
+		},
+		{
+			name:       "Equivalent assume-role policies 2",
+			policy1:    policyTest42a,
+			policy2:    policyTest42b,
+			equivalent: true,
+		},
+		{
+			name:       "Not equivalent assume-role policies",
+			policy1:    policyTest43a,
+			policy2:    policyTest43b,
+			equivalent: false,
+		},
 	}
 
 	for _, tc := range cases {
@@ -1571,6 +1589,15 @@ const policyTest40b = `{
     }
   ]
 }`
+
+const policyTest41a = `{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"}}],"Version":"2012-10-17"}`
+const policyTest41b = `{"Statement":[{"Action":["sts:AssumeRole"],"Effect":"Allow","Principal":{"Service":["ec2.amazonaws.com"]}}],"Version":"2012-10-17"}`
+
+const policyTest42a = `{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"}}],"Version":"2012-10-17"}`
+const policyTest42b = `{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow","Principal":{"Service":["ec2.amazonaws.com"]}}],"Version":"2012-10-17"}`
+
+const policyTest43a = `{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"}}],"Version":"2012-10-17"}`
+const policyTest43b = `{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow","Principal":{"Service":["rds.amazonaws.com"]}}],"Version":"2012-10-17"}`
 
 func TestStringValueSlicesEqualIgnoreOrder(t *testing.T) {
 	equal := []interface{}{
