@@ -1,6 +1,6 @@
 ## AWS Policy Equivalence Package
 
-This package checks for structural equivalence of two AWS policy documents. See Godoc for more information on usage.
+This package checks for structural equivalence of two AWS policy documents. See [Godoc](github.com/hashicorp/awspolicyequivalence) for more information on usage.
 
 ### Post v1.5 Validation vs. Equivalence
 
