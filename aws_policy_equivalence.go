@@ -52,12 +52,12 @@ func PoliciesAreEquivalent(policy1, policy2 string) (bool, error) {
 
 	policy1intermediate := &intermediatePolicyDocument{}
 	if err := json.Unmarshal([]byte(policy1), policy1intermediate); err != nil {
-		return false, fmt.Errorf("unmarshaling policy: %s", err)
+		return false, fmt.Errorf("unmarshaling policy 1: %s", err)
 	}
 
 	policy2intermediate := &intermediatePolicyDocument{}
 	if err := json.Unmarshal([]byte(policy2), policy2intermediate); err != nil {
-		return false, fmt.Errorf("unmarshaling policy: %s", err)
+		return false, fmt.Errorf("unmarshaling policy 2: %s", err)
 	}
 
 	if reflect.DeepEqual(policy1intermediate, policy2intermediate) {
@@ -88,12 +88,12 @@ func (intermediate *intermediatePolicyDocument) document() (*policyDocument, err
 	switch s := intermediate.Statements.(type) {
 	case []interface{}:
 		if err := mapstructure.Decode(s, &statements); err != nil {
-			return nil, fmt.Errorf("parsing statement: %s", err)
+			return nil, fmt.Errorf("parsing statement 1: %s", err)
 		}
 	case map[string]interface{}:
 		var singleStatement *policyStatement
 		if err := mapstructure.Decode(s, &singleStatement); err != nil {
-			return nil, fmt.Errorf("parsing statement: %s", err)
+			return nil, fmt.Errorf("parsing statement 2: %s", err)
 		}
 		statements = append(statements, singleStatement)
 	default:
