@@ -35,7 +35,7 @@ func PoliciesAreEquivalent(policy1, policy2 string) (bool, error) {
 	// policies, such as assume-role policies that can be lists of JSONs. This
 	// only handles a one-length list of JSON:
 	policy1 = strings.TrimSpace(policy1)
-	if strings.HasPrefix(policy1, "[") {
+	if strings.HasPrefix(policy1, "[") && strings.HasSuffix(policy1, "]") {
 		policy1 = strings.TrimPrefix(strings.TrimSuffix(policy1, "]"), "[")
 		if strings.TrimSpace(policy1) == "" {
 			policy1 = "{}"
@@ -43,7 +43,7 @@ func PoliciesAreEquivalent(policy1, policy2 string) (bool, error) {
 	}
 
 	policy2 = strings.TrimSpace(policy2)
-	if strings.HasPrefix(policy2, "[") {
+	if strings.HasPrefix(policy2, "[") && strings.HasSuffix(policy2, "]") {
 		policy2 = strings.TrimPrefix(strings.TrimSuffix(policy2, "]"), "[")
 		if strings.TrimSpace(policy2) == "" {
 			policy2 = "{}"
