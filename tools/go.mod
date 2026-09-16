@@ -1,6 +1,6 @@
 module github.com/hashicorp/awspolicyequivalence/tools
 
-go 1.17
+go 1.26.8
 
 require github.com/golangci/golangci-lint v1.43.0
 
