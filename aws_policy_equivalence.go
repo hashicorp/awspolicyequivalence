@@ -79,9 +79,9 @@ func PoliciesAreEquivalent(policy1, policy2 string) (bool, error) {
 }
 
 type intermediatePolicyDocument struct {
-	Version    string      `json:",omitempty"`
-	Id         string      `json:",omitempty"`
-	Statements interface{} `json:"Statement"`
+	Version    string `json:",omitempty"`
+	Id         string `json:",omitempty"`
+	Statements any    `json:"Statement"`
 }
 
 func (intermediate *intermediatePolicyDocument) document() (*policyDocument, error) {
@@ -92,11 +92,11 @@ func (intermediate *intermediatePolicyDocument) document() (*policyDocument, err
 	// Reference: https://github.com/hashicorp/terraform-provider-aws/issues/22944
 	if intermediate.Statements != nil {
 		switch s := intermediate.Statements.(type) {
-		case []interface{}:
+		case []any:
 			if err := mapstructure.Decode(s, &statements); err != nil {
 				return nil, fmt.Errorf("parsing statement 1: %s", err)
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			var singleStatement *policyStatement
 			if err := mapstructure.Decode(s, &singleStatement); err != nil {
 				return nil, fmt.Errorf("parsing statement 2: %s", err)
@@ -177,15 +177,15 @@ func (doc *policyDocument) equals(other *policyDocument) bool {
 }
 
 type policyStatement struct {
-	Sid           string                            `json:",omitempty" mapstructure:"Sid"`
-	Effect        string                            `json:",omitempty" mapstructure:"Effect"`
-	Actions       interface{}                       `json:"Action,omitempty" mapstructure:"Action"`
-	NotActions    interface{}                       `json:"NotAction,omitempty" mapstructure:"NotAction"`
-	Resources     interface{}                       `json:"Resource,omitempty" mapstructure:"Resource"`
-	NotResources  interface{}                       `json:"NotResource,omitempty" mapstructure:"NotResource"`
-	Principals    interface{}                       `json:"Principal,omitempty" mapstructure:"Principal"`
-	NotPrincipals interface{}                       `json:"NotPrincipal,omitempty" mapstructure:"NotPrincipal"`
-	Conditions    map[string]map[string]interface{} `json:"Condition,omitempty" mapstructure:"Condition"`
+	Sid           string                    `json:",omitempty" mapstructure:"Sid"`
+	Effect        string                    `json:",omitempty" mapstructure:"Effect"`
+	Actions       any                       `json:"Action,omitempty" mapstructure:"Action"`
+	NotActions    any                       `json:"NotAction,omitempty" mapstructure:"NotAction"`
+	Resources     any                       `json:"Resource,omitempty" mapstructure:"Resource"`
+	NotResources  any                       `json:"NotResource,omitempty" mapstructure:"NotResource"`
+	Principals    any                       `json:"Principal,omitempty" mapstructure:"Principal"`
+	NotPrincipals any                       `json:"NotPrincipal,omitempty" mapstructure:"NotPrincipal"`
+	Conditions    map[string]map[string]any `json:"Condition,omitempty" mapstructure:"Condition"`
 }
 
 func (statement *policyStatement) equals(other *policyStatement) bool {
@@ -252,9 +252,9 @@ func (statement *policyStatement) equals(other *policyStatement) bool {
 	return true
 }
 
-func mapPrincipalsEqual(ours, theirs interface{}) bool {
-	ourPrincipalMap, oursOk := ours.(map[string]interface{})
-	theirPrincipalMap, theirsOk := theirs.(map[string]interface{})
+func mapPrincipalsEqual(ours, theirs any) bool {
+	ourPrincipalMap, oursOk := ours.(map[string]any)
+	theirPrincipalMap, theirsOk := theirs.(map[string]any)
 
 	oursNormalized := make(map[string]principalStringSet)
 	if oursOk {
@@ -301,7 +301,7 @@ func mapPrincipalsEqual(ours, theirs interface{}) bool {
 	return true
 }
 
-func stringPrincipalsEqual(ours, theirs interface{}) bool {
+func stringPrincipalsEqual(ours, theirs any) bool {
 	ourPrincipal, oursIsString := ours.(string)
 	theirPrincipal, theirsIsString := theirs.(string)
 
@@ -336,7 +336,7 @@ func stringPrincipalsEqual(ours, theirs interface{}) bool {
 	return false
 }
 
-type conditionsBlock map[string]map[string]interface{}
+type conditionsBlock map[string]map[string]any
 
 func (conditions conditionsBlock) Equals(other conditionsBlock) bool {
 	if conditions == nil && other != nil || other == nil && conditions != nil {
@@ -411,7 +411,7 @@ type principalStringSet stringSet
 // may be nil, a single string, or []interface{} (each of which is a string).
 // This corresponds with how structures come off the JSON unmarshaler
 // without any custom encoding rules.
-func newStringSet(members interface{}) stringSet {
+func newStringSet(members any) stringSet {
 	if members == nil {
 		return stringSet{}
 	}
@@ -423,7 +423,7 @@ func newStringSet(members interface{}) stringSet {
 		return stringSet{strconv.FormatBool(v)}
 	case float64:
 		return stringSet{strconv.FormatFloat(v, 'f', -1, 64)}
-	case []interface{}:
+	case []any:
 		var actions []string
 		for _, action := range v {
 			switch action := action.(type) {
@@ -446,7 +446,7 @@ func newStringSet(members interface{}) stringSet {
 	}
 }
 
-func newPrincipalStringSet(members interface{}) principalStringSet {
+func newPrincipalStringSet(members any) principalStringSet {
 	return principalStringSet(newStringSet(members))
 }
 
