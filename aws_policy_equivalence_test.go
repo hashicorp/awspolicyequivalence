@@ -1611,55 +1611,55 @@ const policyTest44a = ``
 const policyTest44b = `{}`
 
 func TestStringValueSlicesEqualIgnoreOrder(t *testing.T) {
-	equal := []interface{}{
-		[]interface{}{
+	equal := []any{
+		[]any{
 			[]string{"a", "b", "c"},
 			[]string{"a", "b", "c"},
 		},
-		[]interface{}{
+		[]any{
 			[]string{"b", "a", "c"},
 			[]string{"a", "b", "c"},
 		},
-		[]interface{}{
+		[]any{
 			[]string{"apple", "carrot", "tomato"},
 			[]string{"tomato", "apple", "carrot"},
 		},
-		[]interface{}{
+		[]any{
 			[]string{"Application", "Barrier", "Chilly", "Donut"},
 			[]string{"Barrier", "Application", "Donut", "Chilly"},
 		},
 	}
 	for _, v := range equal {
-		if !stringSlicesEqualIgnoreOrder(v.([]interface{})[0].([]string), v.([]interface{})[1].([]string)) {
-			t.Fatalf("%v should be equal: %v", v.([]interface{})[0].([]string), v.([]interface{})[1].([]string))
+		if !stringSlicesEqualIgnoreOrder(v.([]any)[0].([]string), v.([]any)[1].([]string)) {
+			t.Fatalf("%v should be equal: %v", v.([]any)[0].([]string), v.([]any)[1].([]string))
 		}
 	}
 
-	notEqual := []interface{}{
-		[]interface{}{
+	notEqual := []any{
+		[]any{
 			[]string{"c", "b", "c"},
 			[]string{"a", "b", "c"},
 		},
-		[]interface{}{
+		[]any{
 			[]string{"b", "a", "c"},
 			[]string{"a", "bread", "c"},
 		},
-		[]interface{}{
+		[]any{
 			[]string{"apple", "carrot", "tomato"},
 			[]string{"tomato", "apple"},
 		},
-		[]interface{}{
+		[]any{
 			[]string{"Application", "Barrier", "Chilly", "Donut"},
 			[]string{"Barrier", "Applications", "Donut", "Chilly"},
 		},
-		[]interface{}{
+		[]any{
 			[]string{},
 			[]string{"Barrier", "Applications", "Donut", "Chilly"},
 		},
 	}
 	for _, v := range notEqual {
-		if stringSlicesEqualIgnoreOrder(v.([]interface{})[0].([]string), v.([]interface{})[1].([]string)) {
-			t.Fatalf("%v should not be equal: %v", v.([]interface{})[0].([]string), v.([]interface{})[1].([]string))
+		if stringSlicesEqualIgnoreOrder(v.([]any)[0].([]string), v.([]any)[1].([]string)) {
+			t.Fatalf("%v should not be equal: %v", v.([]any)[0].([]string), v.([]any)[1].([]string))
 		}
 	}
 }
@@ -1699,7 +1699,7 @@ func TestIntermediatePolicyDocument(t *testing.T) {
 					{
 						Sid:    "",
 						Effect: "Allow",
-						Principals: map[string]interface{}{
+						Principals: map[string]any{
 							"Service": "spotfleet.amazonaws.com",
 						},
 						Actions: "sts:AssumeRole",
