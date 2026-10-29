@@ -1,4 +1,4 @@
-github.com/aws/aws-sdk-go-v2 v1.47.0 h1:0jsHallhJCeaU0Ko48c/3FK1ctOQ7NpzggxriJOQ8MQ=
-github.com/aws/aws-sdk-go-v2 v1.47.0/go.mod h1:bttEH6JqnUL8LepvDVfdrds/fZ5bCIxzpe3abyUrhDU=
+github.com/aws/aws-sdk-go-v2 v1.47.4 h1:bTvk6UdSSSvaQsfLVj1JRDEEqj/PDRwGf1KanaRzau0=
+github.com/aws/aws-sdk-go-v2 v1.47.4/go.mod h1:XkrjAZvr705Nytv6PkPUhoSB2W9+vVHBp5oAWpkh8Ak=
 github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyuac5Z2hdY=
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
